@@ -73,26 +73,41 @@ Bottom tab navigation for one-handed use, 44px+ tap targets, 16px+ base font to 
 
 ## Architecture
 
+<div align="center">
+  <img src="docs/architecture.png" alt="AuraSync architecture — GitHub to AWS Amplify to the React PWA, then API Gateway, Lambda, S3 and DynamoDB" width="100%" />
+</div>
+
+### Deployment path
+
+| Step | What happens |
+|---|---|
+| **GitHub Repo** | Single source of truth. Every push to `main` triggers the pipeline. |
+| **AWS Amplify** | CI/CD — installs dependencies, runs `vite build`, and deploys the static bundle to a global CDN over HTTPS (required, since service workers, microphone and geolocation only work on a secure origin). |
+| **React + PWA** | The app itself. Once loaded, it installs a service worker and becomes fully independent of the network. |
+
+### Request path (only when online)
+
+| Step | What happens |
+|---|---|
+| **API Gateway** | Single public HTTPS entry point for the sync endpoint. |
+| **Lambda** | Stateless handler — validates the payload, routes it by type, writes to storage. Scales to zero between disasters, so idle cost is nil. |
+| **IAM Role** | Execution role attached to Lambda, scoped to only the S3 and DynamoDB actions it actually needs. |
+| **S3** | Object storage for voice-note audio, which is too large for a database row. |
+| **DynamoDB** | Metadata and location pings — serverless, millisecond reads, and it absorbs the sudden write spike when hundreds of devices reconnect at once. |
+
+### On-device path (works with zero internet)
+
 ```
-┌──────────────────────── DEVICE (works with zero internet) ────────────────────────┐
-│                                                                                   │
-│   React 19 + Vite + Tailwind          Service Worker (Workbox)                     │
-│   ┌────────────────────────┐          precaches shell + sql-wasm-browser.wasm      │
-│   │ Talk │ Location │      │                                                       │
-│   │ Shelters │ Sync       │──────┐                                                 │
-│   └────────────────────────┘      │                                                │
-│                                   ▼                                                │
-│   MediaRecorder ──► crypto.js (AES-GCM) ──► sql.js  ──persist──► IndexedDB          │
-│   Geolocation   ──►                          SQLite                                │
-│                                                │                                   │
-│   WebRTC (LAN P2P voice, no server) ◄──────────┤                                   │
-│                                                ▼                                   │
-│                                          sync_queue                                │
-└────────────────────────────────────────────────┼───────────────────────────────────┘
-                                                 │  on reconnect (navigator.onLine)
-                                                 ▼
-                              AWS API Gateway ──► Lambda ──► storage + triage
+MediaRecorder ──► crypto.js (AES-GCM) ──┐
+Geolocation   ──────────────────────────┼──► sql.js (SQLite) ──persist──► IndexedDB
+                                        │              │
+WebRTC (LAN peer-to-peer voice,         │              ▼
+        no server, no internet) ────────┘         sync_queue
+                                                       │
+                          on reconnect (navigator.onLine) ──► API Gateway
 ```
+
+Everything above the sync queue runs with the network fully down. The queue is the only bridge to the cloud, which is what makes the offline path the default rather than a fallback.
 
 ---
 
