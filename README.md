@@ -113,12 +113,12 @@ Everything above the sync queue runs with the network fully down. The queue is t
 
 ## Tech Stack
 
-**Frontend** — React 19, Vite 8, Tailwind CSS v3, React Router 7, lucide-react
-**Offline data** — sql.js (SQLite/WASM), IndexedDB persistence layer
-**Security** — WebCrypto AES-GCM 256-bit encryption at rest
-**Realtime** — WebRTC with manual SDP exchange (serverless by design)
-**Offline shell** — vite-plugin-pwa / Workbox, NetworkFirst HTML + CacheFirst hashed assets
-**Cloud** — AWS API Gateway + Lambda sync endpoint, deployed via AWS Amplify
+- **Frontend** — React 19, Vite 8, Tailwind CSS v3, React Router 7, lucide-react
+- **Offline data** — sql.js (SQLite/WASM), IndexedDB persistence layer
+- **Security** — WebCrypto AES-GCM 256-bit encryption at rest
+- **Realtime** — WebRTC with manual SDP exchange (serverless by design)
+- **Offline shell** — vite-plugin-pwa / Workbox, NetworkFirst HTML + CacheFirst hashed assets
+- **Cloud** — AWS API Gateway + Lambda, S3, DynamoDB, deployed via AWS Amplify
 
 ---
 
